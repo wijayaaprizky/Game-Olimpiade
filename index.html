@@ -34,10 +34,10 @@
 </head>
 <body class="bg-pattern h-screen flex flex-col items-center justify-center select-none">
 
-    <!-- Audio BGM Online dengan Preload -->
-    <audio id="bg-music" loop preload="auto" crossorigin="anonymous">
-        <source src="https://assets.mixkit.co/music/preview/mixkit-happy-times-158.mp3" type="audio/mpeg">
-    </audio>
+    <!-- Tombol Kontrol Musik -->
+    <button id="music-btn" onclick="toggleMusic()" class="absolute top-4 right-4 z-20 bg-white/90 px-4 py-2 rounded-full shadow-md font-black text-pink-500 border-2 border-pink-200 hidden">
+        🔇 Musik Mati
+    </button>
 
     <!-- Start Screen -->
     <div id="start-screen" class="absolute inset-0 bg-pink-500 flex flex-col items-center justify-center z-50">
@@ -48,7 +48,7 @@
     </div>
 
     <!-- UI Header -->
-    <div class="absolute top-4 left-4 right-4 flex justify-between items-center px-4 z-10">
+    <div class="absolute top-4 left-4 flex justify-between items-center px-4 z-10 hidden" id="header-ui">
         <div class="bg-white px-6 py-2 rounded-full font-black text-pink-600 text-2xl border-4 border-pink-200 shadow-md">
             ⭐ Bintang: <span id="score-display">0</span>
         </div>
@@ -65,153 +65,53 @@
         let correctAnswer = null;
         let score = 0;
 
-        const svgApple = `<svg viewBox="0 0 100 100" class="w-16 h-16 drop-shadow-md pop-in"><path d="M50 30 C 60 10, 80 20, 70 40 C 60 40, 50 30, 50 30" fill="#4ade80" /><path d="M50 35 L 55 20" stroke="#78350f" stroke-width="4"/><path d="M25 40 C 25 20, 50 25, 50 35 C 50 25, 75 20, 75 40 C 85 60, 70 85, 50 90 C 30 85, 15 60, 25 40 Z" fill="#ef4444" /></svg>`;
-        const svgBintang = `<svg viewBox="0 0 100 100" class="w-16 h-16 drop-shadow-md pop-in"><polygon points="50,10 61,39 92,39 67,57 76,86 50,69 24,86 33,57 8,39 39,39" fill="#facc15" stroke="#ca8a04" stroke-width="4"/></svg>`;
-        const svgKotak = `<svg viewBox="0 0 100 100" class="w-16 h-16 drop-shadow-md pop-in"><rect x="15" y="15" width="70" height="70" rx="10" fill="#3b82f6" stroke="#1d4ed8" stroke-width="4"/></svg>`;
-        const svgLingkaran = `<svg viewBox="0 0 100 100" class="w-16 h-16 drop-shadow-md pop-in"><circle cx="50" cy="50" r="35" fill="#ec4899" stroke="#be185d" stroke-width="4"/></svg>`;
+        // === SISTEM MUSIK INTERNAL (100% PASTI BUNYI TANPA FILE MP3) ===
+        let audioCtx;
+        let isMusicPlaying = false;
+        let nextNoteTime = 0;
+        let noteIndex = 0;
+        // Nada ceria (C Major Arpeggio)
+        const melody = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63]; 
 
-        // FUNGSI UTAMA: Dipanggil tepat di milidetik tombol ditekan
-        function startGame() {
-            // 1. Paksa putar musik secara sinkron agar tidak diblokir browser
-            const bg = document.getElementById('bg-music');
-            if (bg) {
-                bg.volume = 0.3;
-                bg.play().catch(e => console.log("Akses suara ditolak:", e));
-            }
-
-            // 2. Tutup layar awal
-            document.getElementById('start-screen').style.display = 'none';
+        function playSynthMusic() {
+            if (!isMusicPlaying) return;
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
-            // 3. Tampilkan soal pertama
-            nextQuestion();
+            while (nextNoteTime < audioCtx.currentTime + 0.1) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'sine'; // Suara bulat dan empuk (seperti game retro)
+                osc.frequency.value = melody[noteIndex];
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start(nextNoteTime);
+                gain.gain.setValueAtTime(0.03, nextNoteTime); // Volume BGM Pelan
+                gain.gain.exponentialRampToValueAtTime(0.001, nextNoteTime + 0.3);
+                osc.stop(nextNoteTime + 0.3);
+                
+                nextNoteTime += 0.35; // Jeda antar nada
+                noteIndex = (noteIndex + 1) % melody.length;
+            }
+            setTimeout(playSynthMusic, 50);
         }
 
-        function speak(text) {
-            try {
-                if (window.speechSynthesis) {
-                    const u = new SpeechSynthesisUtterance(text);
-                    u.lang = 'id-ID'; u.rate = 0.9;
-                    window.speechSynthesis.speak(u);
-                }
-            } catch(e) {}
-        }
-
-        function setQuestion(text) {
-            document.getElementById('question-text').innerText = text;
-            speak(text);
-        }
-
-        function nextQuestion() {
-            const topic = Math.floor(Math.random() * 4);
-            if (topic === 0) generateCounting();
-            else if (topic === 1) generateComparing();
-            else if (topic === 2) generateMath();
-            else generatePattern();
-        }
-
-        function generateCounting() {
-            const n = Math.floor(Math.random() * 9) + 1;
-            correctAnswer = n;
-            setQuestion("Ada berapa bintang?");
-            document.getElementById('visual-area').innerHTML = Array(n).fill(svgBintang).join('');
-            generateOptions(n, 9);
-        }
-
-        function generateComparing() {
-            let n1 = Math.floor(Math.random() * 9) + 1;
-            let n2 = Math.floor(Math.random() * 9) + 1;
-            while(n1 === n2) n2 = Math.floor(Math.random() * 9) + 1;
-            correctAnswer = Math.max(n1, n2);
-            setQuestion("Mana angka yang lebih besar?");
-            document.getElementById('visual-area').innerHTML = '<div class="text-6xl">⚖️</div>';
-            renderButtons([n1, n2]);
-        }
-
-        function generateMath() {
-            const isAdd = Math.random() > 0.5;
-            let n1 = Math.floor(Math.random() * 4) + 1;
-            let n2 = Math.floor(Math.random() * 4) + 1;
-
-            if (isAdd) {
-                correctAnswer = n1 + n2;
-                setQuestion("Ditambah jadi berapa?");
-                document.getElementById('visual-area').innerHTML = `
-                    <div class="flex">${Array(n1).fill(svgApple).join('')}</div>
-                    <div class="text-5xl font-black text-pink-500 mx-2">+</div>
-                    <div class="flex">${Array(n2).fill(svgApple).join('')}</div>`;
+        function toggleMusic() {
+            const btn = document.getElementById('music-btn');
+            if (isMusicPlaying) {
+                isMusicPlaying = false;
+                btn.innerText = '🔇 Musik Mati';
             } else {
-                if (n1 < n2) [n1, n2] = [n2, n1];
-                correctAnswer = n1 - n2;
-                setQuestion("Dikurangi jadi berapa?");
-                document.getElementById('visual-area').innerHTML = `
-                    <div class="flex">${Array(n1).fill(svgApple).join('')}</div>
-                    <div class="text-5xl font-black text-pink-500 mx-2">-</div>
-                    <div class="text-5xl font-black text-blue-500">${n2}</div>`;
-            }
-            generateOptions(correctAnswer, 8);
-        }
-
-        function generatePattern() {
-            const shapes = [ {id: 'kotak', svg: svgKotak}, {id: 'lingkaran', svg: svgLingkaran} ];
-            setQuestion("Bentuk apa selanjutnya?");
-            document.getElementById('visual-area').innerHTML = `
-                ${shapes[0].svg} ${shapes[1].svg} ${shapes[0].svg} ${shapes[1].svg} ${shapes[0].svg} 
-                <div class="w-16 h-16 border-4 border-dashed border-gray-400 rounded-xl flex items-center justify-center text-3xl font-bold text-gray-400">?</div>`;
-            correctAnswer = 'lingkaran';
-            const container = document.getElementById('options');
-            container.innerHTML = '';
-            shapes.forEach(s => {
-                const btn = document.createElement('button');
-                btn.className = 'btn-ceria bg-white border-4 border-blue-300 w-28 h-28 rounded-2xl shadow-[0_6px_0_rgb(147,197,253)] flex items-center justify-center';
-                btn.innerHTML = s.svg;
-                btn.onclick = () => checkAnswer(s.id, btn, true);
-                container.appendChild(btn);
-            });
-        }
-
-        function generateOptions(correct, maxVal) {
-            let opts = [correct];
-            while(opts.length < 3) {
-                let w = Math.floor(Math.random() * maxVal) + 1;
-                if(!opts.includes(w)) opts.push(w);
-            }
-            opts.sort(() => Math.random() - 0.5);
-            renderButtons(opts);
-        }
-
-        function renderButtons(opts) {
-            const container = document.getElementById('options');
-            container.innerHTML = '';
-            opts.forEach(num => {
-                const btn = document.createElement('button');
-                btn.className = 'btn-ceria bg-white text-blue-600 border-4 border-blue-300 font-black text-5xl w-28 h-28 rounded-[1.5rem] shadow-[0_6px_0_rgb(147,197,253)] flex items-center justify-center';
-                btn.innerText = num;
-                btn.onclick = () => checkAnswer(num, btn, false);
-                container.appendChild(btn);
-            });
-        }
-
-        function checkAnswer(selected, btnElement, isShape) {
-            if (selected === correctAnswer) {
-                score++;
-                document.getElementById('score-display').innerText = score;
-                btnElement.classList.replace('bg-white', 'bg-green-400');
-                if(!isShape) btnElement.classList.replace('text-blue-600', 'text-white');
-                btnElement.style.boxShadow = '0 6px 0 rgb(34,197,94)';
-                speak("Pintar!");
-                setTimeout(nextQuestion, 1200);
-            } else {
-                btnElement.classList.add('shake', 'bg-red-400');
-                btnElement.classList.replace('bg-white', 'bg-red-400');
-                if(!isShape) btnElement.classList.replace('text-blue-600', 'text-white');
-                speak("Coba lagi");
-                setTimeout(() => {
-                    btnElement.classList.remove('shake', 'bg-red-400');
-                    btnElement.classList.add('bg-white');
-                    if(!isShape) btnElement.classList.replace('text-white', 'text-blue-600');
-                }, 800);
+                isMusicPlaying = true;
+                btn.innerText = '🔊 Musik Nyala';
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                nextNoteTime = audioCtx.currentTime + 0.1;
+                playSynthMusic();
             }
         }
-    </script>
-</body>
-</html>
+
+        // === LOGIKA GAME ===
+        const svgApple = `<svg viewBox="0 0 100 100" class="w-16 h-16 drop-shadow-md pop-in"><path d="M50 30 C 60 10, 80 20, 70 40 C 60 40, 50 30, 50 30" fill="#4ade80" /><path d="M50 35 L 55 20" stroke="#78350f" stroke-width="4"/><path d="M25 40 C 25 20, 50 25, 50 35 C 50 25, 7
