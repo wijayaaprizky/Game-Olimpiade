@@ -38,9 +38,9 @@
 </head>
 <body class="bg-pattern h-screen flex flex-col items-center justify-center select-none">
 
-    <!-- Pemutar Musik Latar Online -->
-    <audio id="bg-music" loop crossorigin="anonymous">
-        <source src="https://cdn.pixabay.com/audio/2022/01/18/audio_d0a13f69d2.mp3" type="audio/mpeg">
+    <!-- Pemutar Musik Latar (Menggunakan Server Mixkit yang aman dari blokir) -->
+    <audio id="bg-music" loop>
+        <source src="https://assets.mixkit.co/music/preview/mixkit-happy-times-158.mp3" type="audio/mpeg">
     </audio>
 
     <!-- Start Screen -->
@@ -68,174 +68,24 @@
     </div>
 
     <script>
+        // === VARIABEL GLOBAL ===
         let correctAnswer = null;
         let score = 0;
-        let audioCtx;
         let idVoice = null;
+        let audioCtx = null;
 
-        // Mencari Suara Google Indonesia yang paling jernih
-        function loadVoices() {
-            const voices = window.speechSynthesis.getVoices();
-            idVoice = voices.find(v => v.lang === 'id-ID' && v.name.includes('Google')) || 
-                      voices.find(v => v.lang.includes('id'));
+        // === MENGAMANKAN SISTEM SUARA DARI ERROR BROWSER ===
+        try {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.onvoiceschanged = function() {
+                    const voices = window.speechSynthesis.getVoices();
+                    idVoice = voices.find(v => v.lang === 'id-ID' && v.name.includes('Google')) || 
+                              voices.find(v => v.lang.includes('id'));
+                };
+            }
+        } catch (error) {
+            console.log("Browser tidak mendukung sistem suara otomatis.");
         }
-        window.speechSynthesis.onvoiceschanged = loadVoices;
 
         const svgApple = `<svg viewBox="0 0 100 100" class="w-16 h-16 md:w-24 md:h-24 drop-shadow-md pop-in"><path d="M50 30 C 60 10, 80 20, 70 40 C 60 40, 50 30, 50 30" fill="#4ade80" /><path d="M50 35 L 55 20" stroke="#78350f" stroke-width="4" stroke-linecap="round"/><path d="M25 40 C 25 20, 50 25, 50 35 C 50 25, 75 20, 75 40 C 85 60, 70 85, 50 90 C 30 85, 15 60, 25 40 Z" fill="#ef4444" /></svg>`;
-        const svgBintang = `<svg viewBox="0 0 100 100" class="w-16 h-16 md:w-24 md:h-24 drop-shadow-md pop-in"><polygon points="50,10 61,39 92,39 67,57 76,86 50,69 24,86 33,57 8,39 39,39" fill="#facc15" stroke="#ca8a04" stroke-width="4"/></svg>`;
-        const svgKotak = `<svg viewBox="0 0 100 100" class="w-16 h-16 md:w-24 md:h-24 drop-shadow-md pop-in"><rect x="15" y="15" width="70" height="70" rx="15" fill="#3b82f6" stroke="#1d4ed8" stroke-width="4"/></svg>`;
-        const svgLingkaran = `<svg viewBox="0 0 100 100" class="w-16 h-16 md:w-24 md:h-24 drop-shadow-md pop-in"><circle cx="50" cy="50" r="35" fill="#ec4899" stroke="#be185d" stroke-width="4"/></svg>`;
-
-        function playWinSound() {
-            if (!audioCtx) return;
-            const notes = [440, 554.37, 659.25, 880];
-            notes.forEach((freq, i) => {
-                setTimeout(() => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.value = freq;
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start();
-                    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
-                    osc.stop(audioCtx.currentTime + 0.5);
-                }, i * 100);
-            });
-        }
-
-        function playWrongSound() {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
-            osc.stop(audioCtx.currentTime + 0.3);
-        }
-
-        function speak(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'id-ID';
-                if (idVoice) utterance.voice = idVoice; // Pakai suara terjelas yang ditemukan
-                utterance.rate = 0.8; // Tempo diperlambat agar artikulasi jelas
-                utterance.pitch = 1.2; // Sedikit dinaikkan agar terdengar ramah
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-
-        function startGame() {
-            // Inisiasi sistem suara saat tombol ditekan
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            loadVoices(); // Pastikan suara ter-load
-
-            // Paksa putar musik BGM
-            const bgMusic = document.getElementById('bg-music');
-            bgMusic.volume = 0.25; 
-            bgMusic.play().catch(e => console.log("Gagal memutar bgm.mp3. Pastikan filenya ada di GitHub.", e));
-
-            document.getElementById('start-screen').style.opacity = '0';
-            setTimeout(() => { document.getElementById('start-screen').style.display = 'none'; }, 500);
-            nextQuestion();
-        }
-
-        function nextQuestion() {
-            const syllabusTopic = Math.floor(Math.random() * 4) + 1; 
-            if (syllabusTopic === 1) generateCounting();
-            else if (syllabusTopic === 2) generateComparing();
-            else if (syllabusTopic === 3) generateMath();
-            else generatePattern();
-        }
-
-        function generateCounting() {
-            const num = Math.floor(Math.random() * 9) + 1;
-            correctAnswer = num;
-            setQuestion("Ada berapa bintang di sini?", "Ada berapa bintang di sini?");
-            document.getElementById('visual-area').innerHTML = Array(num).fill(svgBintang).join('');
-            generateOptions(correctAnswer, 9);
-        }
-
-        function generateComparing() {
-            let n1, n2;
-            do {
-                n1 = Math.floor(Math.random() * 10) + 1;
-                n2 = Math.floor(Math.random() * 10) + 1;
-            } while (n1 === n2);
-            correctAnswer = Math.max(n1, n2);
-            setQuestion("Angka mana yang lebih besar?", "Angka mana yang lebih besar?");
-            document.getElementById('visual-area').innerHTML = '<div class="text-6xl pop-in">⚖️</div>';
-            renderButtons([n1, n2]);
-        }
-
-        function generateMath() {
-            const isAddition = Math.random() > 0.5;
-            let n1 = Math.floor(Math.random() * 5) + 1;
-            let n2 = Math.floor(Math.random() * 4) + 1;
-
-            if (isAddition) {
-                correctAnswer = n1 + n2;
-                setQuestion("Berapa hasil penjumlahannya?", "Ditambah jadi berapa?");
-                document.getElementById('visual-area').innerHTML = `
-                    <div class="flex gap-2">${Array(n1).fill(svgApple).join('')}</div>
-                    <div class="text-6xl font-black text-pink-500 mx-4">+</div>
-                    <div class="flex gap-2">${Array(n2).fill(svgApple).join('')}</div>
-                `;
-            } else {
-                if (n1 < n2) [n1, n2] = [n2, n1];
-                correctAnswer = n1 - n2;
-                setQuestion("Berapa hasil pengurangannya?", "Dikurangi jadi berapa?");
-                document.getElementById('visual-area').innerHTML = `
-                    <div class="flex gap-2">${Array(n1).fill(svgApple).join('')}</div>
-                    <div class="text-6xl font-black text-pink-500 mx-4">-</div>
-                    <div class="text-6xl font-black text-blue-500">${n2}</div>
-                `;
-            }
-            generateOptions(correctAnswer, 10);
-        }
-
-        function generatePattern() {
-            const shapes = [ { id: 'kotak', svg: svgKotak }, { id: 'lingkaran', svg: svgLingkaran } ];
-            setQuestion("Bentuk apa selanjutnya?", "Bentuk apa selanjutnya?");
-            document.getElementById('visual-area').innerHTML = `
-                ${shapes[0].svg} ${shapes[1].svg} ${shapes[0].svg} ${shapes[1].svg} ${shapes[0].svg} 
-                <div class="w-16 h-16 md:w-24 md:h-24 border-8 border-dashed border-gray-300 rounded-2xl flex items-center justify-center text-4xl text-gray-300 font-bold pop-in">?</div>
-            `;
-            correctAnswer = 'lingkaran';
-            const container = document.getElementById('options');
-            container.innerHTML = '';
-            shapes.forEach(shape => {
-                const btn = document.createElement('button');
-                btn.className = 'btn-ceria bg-white border-8 border-blue-200 w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] shadow-[0_10px_0_rgb(191,219,254)] flex items-center justify-center pop-in';
-                btn.innerHTML = shape.svg;
-                btn.onclick = () => checkAnswer(shape.id, btn, true);
-                container.appendChild(btn);
-            });
-        }
-
-        function setQuestion(text, voiceText) {
-            document.getElementById('question-text').innerText = text;
-            speak(voiceText);
-        }
-
-        function generateOptions(correct, maxVal) {
-            let options = [correct];
-            while(options.length < 3) {
-                let wrong = Math.floor(Math.random() * maxVal) + 1;
-                if(!options.includes(wrong) && wrong >= 0) options.push(wrong);
-            }
-            options.sort(() => Math.random() - 0.5);
-            renderButtons(options);
-        }
-
-        function renderButtons(optionsArray) {
-            const container = document.getElementById('options');
-            container.innerHTML = '';
-            optionsArray.forEach(num => {
-                const btn = document.createElement('button');
-                btn.className = 'btn-ceria bg-white text-blue-600 border-8 border-blue-200 font-black text-6xl md:text-7xl w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] shadow-[0_10px_0_
+        const svgBintang = `<svg viewBox="0 0 100 100" class="w-16 h-16 md:w-24 md:h
