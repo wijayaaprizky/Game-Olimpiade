@@ -34,8 +34,8 @@
 </head>
 <body class="bg-pattern h-screen flex flex-col items-center justify-center select-none">
 
-    <!-- Audio BGM Online -->
-    <audio id="bg-music" loop>
+    <!-- Audio BGM Online dengan Preload -->
+    <audio id="bg-music" loop preload="auto" crossorigin="anonymous">
         <source src="https://assets.mixkit.co/music/preview/mixkit-happy-times-158.mp3" type="audio/mpeg">
     </audio>
 
@@ -62,7 +62,6 @@
     </div>
 
     <script>
-        // Logika Inti Game (Tanpa API rumit di awal)
         let correctAnswer = null;
         let score = 0;
 
@@ -71,24 +70,22 @@
         const svgKotak = `<svg viewBox="0 0 100 100" class="w-16 h-16 drop-shadow-md pop-in"><rect x="15" y="15" width="70" height="70" rx="10" fill="#3b82f6" stroke="#1d4ed8" stroke-width="4"/></svg>`;
         const svgLingkaran = `<svg viewBox="0 0 100 100" class="w-16 h-16 drop-shadow-md pop-in"><circle cx="50" cy="50" r="35" fill="#ec4899" stroke="#be185d" stroke-width="4"/></svg>`;
 
-        // FUNGSI UTAMA: Menjamin tombol pasti bekerja
+        // FUNGSI UTAMA: Dipanggil tepat di milidetik tombol ditekan
         function startGame() {
-            // 1. Langsung hapus layar mulai (Pasti berhasil)
+            // 1. Paksa putar musik secara sinkron agar tidak diblokir browser
+            const bg = document.getElementById('bg-music');
+            if (bg) {
+                bg.volume = 0.3;
+                bg.play().catch(e => console.log("Akses suara ditolak:", e));
+            }
+
+            // 2. Tutup layar awal
             document.getElementById('start-screen').style.display = 'none';
             
-            // 2. Langsung tampilkan soal (Pasti berhasil)
+            // 3. Tampilkan soal pertama
             nextQuestion();
-
-            // 3. Coba nyalakan musik secara pelan-pelan (Jika gagal, game tidak akan terhenti)
-            setTimeout(() => {
-                try {
-                    const bg = document.getElementById('bg-music');
-                    if(bg) { bg.volume = 0.3; bg.play(); }
-                } catch(e) {}
-            }, 100);
         }
 
-        // FUNGSI SUARA AMAN
         function speak(text) {
             try {
                 if (window.speechSynthesis) {
