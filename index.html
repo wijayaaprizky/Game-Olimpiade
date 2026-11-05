@@ -10,7 +10,7 @@
         body { font-family: 'Nunito', sans-serif; overflow: hidden; touch-action: manipulation; }
         
         .bg-pattern {
-            background-color: #fef08a; /* Warna latar ceria kuning pastel */
+            background-color: #fef08a;
             background-image: radial-gradient(#fde047 20%, transparent 20%);
             background-size: 50px 50px;
         }
@@ -29,9 +29,7 @@
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
 
-        .btn-ceria {
-            transition: all 0.1s ease;
-        }
+        .btn-ceria { transition: all 0.1s ease; }
         .btn-ceria:active {
             transform: scale(0.9) translateY(4px);
             box-shadow: 0 0px 0 rgba(0,0,0,0.2) !important;
@@ -39,6 +37,11 @@
     </style>
 </head>
 <body class="bg-pattern h-screen flex flex-col items-center justify-center select-none">
+
+    <!-- Pemutar Musik Latar (BGM) -->
+    <audio id="bg-music" loop>
+        <source src="bgm.mp3" type="audio/mpeg">
+    </audio>
 
     <!-- Start Screen -->
     <div id="start-screen" class="absolute inset-0 bg-pink-400 flex flex-col items-center justify-center z-50 transition-opacity duration-500">
@@ -59,9 +62,7 @@
     <div class="flex flex-col items-center w-full max-w-4xl px-4 mt-16">
         <h2 id="question-text" class="text-3xl md:text-5xl font-black text-pink-700 mb-8 text-center drop-shadow-sm min-h-[60px] bg-white/70 px-8 py-4 rounded-[2rem] border-4 border-white shadow-sm"></h2>
         
-        <div id="visual-area" class="flex flex-wrap items-center justify-center gap-6 mb-12 bg-white/95 p-8 rounded-[3rem] shadow-2xl border-8 border-pink-100 min-h-[200px] w-full">
-            <!-- Konten dinamis -->
-        </div>
+        <div id="visual-area" class="flex flex-wrap items-center justify-center gap-6 mb-12 bg-white/95 p-8 rounded-[3rem] shadow-2xl border-8 border-pink-100 min-h-[200px] w-full"></div>
 
         <div id="options" class="flex flex-wrap gap-6 justify-center w-full"></div>
     </div>
@@ -71,22 +72,18 @@
         let score = 0;
         let audioCtx;
 
-        // Aset Visual (SVG)
         const svgApple = `<svg viewBox="0 0 100 100" class="w-16 h-16 md:w-24 md:h-24 drop-shadow-md pop-in"><path d="M50 30 C 60 10, 80 20, 70 40 C 60 40, 50 30, 50 30" fill="#4ade80" /><path d="M50 35 L 55 20" stroke="#78350f" stroke-width="4" stroke-linecap="round"/><path d="M25 40 C 25 20, 50 25, 50 35 C 50 25, 75 20, 75 40 C 85 60, 70 85, 50 90 C 30 85, 15 60, 25 40 Z" fill="#ef4444" /></svg>`;
         const svgBintang = `<svg viewBox="0 0 100 100" class="w-16 h-16 md:w-24 md:h-24 drop-shadow-md pop-in"><polygon points="50,10 61,39 92,39 67,57 76,86 50,69 24,86 33,57 8,39 39,39" fill="#facc15" stroke="#ca8a04" stroke-width="4"/></svg>`;
         const svgKotak = `<svg viewBox="0 0 100 100" class="w-16 h-16 md:w-24 md:h-24 drop-shadow-md pop-in"><rect x="15" y="15" width="70" height="70" rx="15" fill="#3b82f6" stroke="#1d4ed8" stroke-width="4"/></svg>`;
         const svgLingkaran = `<svg viewBox="0 0 100 100" class="w-16 h-16 md:w-24 md:h-24 drop-shadow-md pop-in"><circle cx="50" cy="50" r="35" fill="#ec4899" stroke="#be185d" stroke-width="4"/></svg>`;
 
-        // Sintesis Suara Gembira (Web Audio API)
         function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
 
         function playWinSound() {
             if (!audioCtx) return;
-            const notes = [440, 554.37, 659.25, 880]; // A4, C#5, E5, A5 (Major arpeggio)
+            const notes = [440, 554.37, 659.25, 880];
             notes.forEach((freq, i) => {
                 setTimeout(() => {
                     const osc = audioCtx.createOscillator();
@@ -122,52 +119,52 @@
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'id-ID';
                 utterance.rate = 0.9;
-                utterance.pitch = 1.3; // Suara lebih riang
+                utterance.pitch = 1.3;
                 window.speechSynthesis.speak(utterance);
             }
         }
 
         function startGame() {
             initAudio();
+            
+            // Logika menyalakan musik latar
+            const bgMusic = document.getElementById('bg-music');
+            bgMusic.volume = 0.3; // Volume musik 30%
+            bgMusic.play().catch(e => console.log("Menunggu interaksi agar musik bisa berputar"));
+
             document.getElementById('start-screen').style.opacity = '0';
             setTimeout(() => { document.getElementById('start-screen').style.display = 'none'; }, 500);
             nextQuestion();
         }
 
         function nextQuestion() {
-            // Silabus TK: 1. Menghitung, 2. Membandingkan, 3. Penjumlahan/Pengurangan, 4. Pola/Bentuk
             const syllabusTopic = Math.floor(Math.random() * 4) + 1; 
-            
-            if (syllabusTopic === 1) generateCounting(); // Menghitung
-            else if (syllabusTopic === 2) generateComparing(); // Membandingkan
-            else if (syllabusTopic === 3) generateMath(); // Penjumlahan / Pengurangan
-            else generatePattern(); // Pola dan Bentuk
+            if (syllabusTopic === 1) generateCounting();
+            else if (syllabusTopic === 2) generateComparing();
+            else if (syllabusTopic === 3) generateMath();
+            else generatePattern();
         }
 
-        // 1. Menghitung Angka
         function generateCounting() {
-            const num = Math.floor(Math.random() * 9) + 1; // 1-9
+            const num = Math.floor(Math.random() * 9) + 1;
             correctAnswer = num;
             setQuestion("Ada berapa bintang di sini?", "Hitung bintangnya!");
             document.getElementById('visual-area').innerHTML = Array(num).fill(svgBintang).join('');
             generateOptions(correctAnswer, 9);
         }
 
-        // 2. Membandingkan Angka
         function generateComparing() {
             let n1, n2;
             do {
                 n1 = Math.floor(Math.random() * 10) + 1;
                 n2 = Math.floor(Math.random() * 10) + 1;
             } while (n1 === n2);
-            
             correctAnswer = Math.max(n1, n2);
             setQuestion("Angka mana yang lebih besar?", "Mana yang lebih besar?");
             document.getElementById('visual-area').innerHTML = '<div class="text-6xl pop-in">⚖️</div>';
             renderButtons([n1, n2]);
         }
 
-        // 3. Penjumlahan dan Pengurangan
         function generateMath() {
             const isAddition = Math.random() > 0.5;
             let n1 = Math.floor(Math.random() * 5) + 1;
@@ -182,7 +179,7 @@
                     <div class="flex gap-2">${Array(n2).fill(svgApple).join('')}</div>
                 `;
             } else {
-                if (n1 < n2) [n1, n2] = [n2, n1]; // Agar tidak minus
+                if (n1 < n2) [n1, n2] = [n2, n1];
                 correctAnswer = n1 - n2;
                 setQuestion("Berapa hasil pengurangannya?", "Dikurangi jadi berapa?");
                 document.getElementById('visual-area').innerHTML = `
@@ -194,22 +191,14 @@
             generateOptions(correctAnswer, 10);
         }
 
-        // 4. Pola dan Bentuk
         function generatePattern() {
-            const shapes = [
-                { id: 'kotak', svg: svgKotak }, 
-                { id: 'lingkaran', svg: svgLingkaran }
-            ];
-            
-            // Pola dasar A-B-A-B
+            const shapes = [ { id: 'kotak', svg: svgKotak }, { id: 'lingkaran', svg: svgLingkaran } ];
             setQuestion("Bentuk apa selanjutnya?", "Bentuk apa selanjutnya?");
             document.getElementById('visual-area').innerHTML = `
                 ${shapes[0].svg} ${shapes[1].svg} ${shapes[0].svg} ${shapes[1].svg} ${shapes[0].svg} 
                 <div class="w-16 h-16 md:w-24 md:h-24 border-8 border-dashed border-gray-300 rounded-2xl flex items-center justify-center text-4xl text-gray-300 font-bold pop-in">?</div>
             `;
-            correctAnswer = 'lingkaran'; // Bentuk B
-            
-            // Render tombol bentuk
+            correctAnswer = 'lingkaran';
             const container = document.getElementById('options');
             container.innerHTML = '';
             shapes.forEach(shape => {
@@ -261,8 +250,6 @@
                 
                 const pujian = ["Hore! Pintar!", "Hebat sekali!", "Yey, Betul!"];
                 speak(pujian[Math.floor(Math.random() * pujian.length)]);
-
-                // Konfeti sederhana dari tengah
                 btnElement.classList.add('pop-in');
 
                 setTimeout(nextQuestion, 1500);
